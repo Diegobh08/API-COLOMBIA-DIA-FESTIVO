@@ -16,6 +16,11 @@ button.addEventListener("click", () => loadData(yearInput.value));
 loadData(yearInput.value);
 
 async function loadData(year) {
+  if (!year) {
+    statusText.innerText = "Por favor ingresa un año válido.";
+    return;
+  }
+
   statusText.innerText = "Consultando datos...";
 
   try {
@@ -26,10 +31,18 @@ async function loadData(year) {
     }
 
     const data = await response.json();
-    const holidays = data.map((holiday) => ({
+
+    let holidays = data.map((holiday) => ({
       name: holiday.name,
-      date: new Date(holiday.date.includes("T") ? holiday.date : `${holiday.date}T00:00:00`)
+      date: new Date(
+          holiday.date.includes("T")
+              ? holiday.date
+              : `${holiday.date}T00:00:00`
+      )
     }));
+
+    // 🔥 ORDENAR POR FECHA
+    holidays.sort((a, b) => a.date - b.date);
 
     renderSummary(holidays);
     renderTable(holidays);
@@ -43,13 +56,19 @@ async function loadData(year) {
 }
 
 function renderChart(holidays) {
+  if (!holidays.length) return;
+
   const xValues = holidays.map((holiday) =>
-    holiday.date.toLocaleDateString("es-CO", { day: "numeric", month: "short" })
+      holiday.date.toLocaleDateString("es-CO", { day: "numeric", month: "short" })
   );
+
   const dayOfYear = holidays.map((holiday) => getDayOfYear(holiday.date));
   const cumulative = holidays.map((_, index) => index + 1);
+
   const tickStep = Math.max(1, Math.ceil(xValues.length / 6));
-  const tickValues = xValues.filter((_, index) => index % tickStep === 0 || index === xValues.length - 1);
+  const tickValues = xValues.filter(
+      (_, index) => index % tickStep === 0 || index === xValues.length - 1
+  );
 
   const data = [
     {
@@ -62,7 +81,8 @@ function renderChart(holidays) {
         color: "rgba(180, 190, 215, 0.75)"
       },
       yaxis: "y2",
-      hovertemplate: "Festivo: %{text}<br>Fecha: %{x}<br>Día del año: %{y}<extra></extra>"
+      hovertemplate:
+          "Festivo: %{text}<br>Fecha: %{x}<br>Día del año: %{y}<extra></extra>"
     },
     {
       x: xValues,
@@ -79,20 +99,15 @@ function renderChart(holidays) {
         color: "#d946ef",
         width: 3
       },
-      hovertemplate: "Festivo: %{text}<br>Fecha: %{x}<br>Acumulado: %{y}<extra></extra>"
+      hovertemplate:
+          "Festivo: %{text}<br>Fecha: %{x}<br>Acumulado: %{y}<extra></extra>"
     }
   ];
 
   const layout = {
     autosize: true,
     height: 420,
-    margin: {
-      l: 40,
-      r: 45,
-      b: 70,
-      t: 40,
-      pad: 4
-    },
+    margin: { l: 40, r: 45, b: 70, t: 40, pad: 4 },
     paper_bgcolor: "#ffffff",
     plot_bgcolor: "#ffffff",
     bargap: 0.38,
@@ -111,34 +126,51 @@ function renderChart(holidays) {
     yaxis2: {
       overlaying: "y",
       side: "right",
-      range: [Math.min(...dayOfYear) - 10, Math.max(...dayOfYear) + 20],
+      range: [
+        Math.min(...dayOfYear) - 10,
+        Math.max(...dayOfYear) + 20
+      ],
       gridcolor: "#ececec",
       zeroline: false,
       tickformat: "d"
     }
   };
 
-  Plotly.newPlot("monthly-chart", data, layout, { responsive: true, displayModeBar: false });
+  Plotly.newPlot("monthly-chart", data, layout, {
+    responsive: true,
+    displayModeBar: false
+  });
 }
 
 function renderTable(holidays) {
-  tableBody.innerHTML = holidays.map((holiday) => `
+  if (!holidays.length) {
+    tableBody.innerHTML =
+        "<tr><td colspan='3' style='text-align:center'>No hay datos disponibles.</td></tr>";
+    return;
+  }
+
+  tableBody.innerHTML = holidays
+      .map(
+          (holiday) => `
     <tr>
       <td>${holiday.date.toLocaleDateString("es-CO")}</td>
       <td>${holiday.date.toLocaleDateString("es-CO", { weekday: "long" })}</td>
       <td>${holiday.name}</td>
     </tr>
-  `).join("");
+  `
+      )
+      .join("");
 }
 
 function renderSummary(holidays) {
   totalHolidays.innerText = holidays.length;
 
   nextHoliday.innerText = holidays[0]
-    ? `${holidays[0].name} - ${holidays[0].date.toLocaleDateString("es-CO")}`
-    : "-";
+      ? `${holidays[0].name} - ${holidays[0].date.toLocaleDateString("es-CO")}`
+      : "-";
 
   const counts = new Array(12).fill(0);
+
   holidays.forEach((holiday) => {
     counts[holiday.date.getMonth()] += 1;
   });
@@ -146,7 +178,10 @@ function renderSummary(holidays) {
   const maxCount = Math.max(...counts);
   const maxMonthIndex = counts.indexOf(maxCount);
 
-  topMonth.innerText = maxCount > 0 ? `${MONTH_NAMES[maxMonthIndex]} (${maxCount})` : "-";
+  topMonth.innerText =
+      maxCount > 0
+          ? `${MONTH_NAMES[maxMonthIndex]} (${maxCount})`
+          : "-";
 }
 
 function getDayOfYear(date) {
